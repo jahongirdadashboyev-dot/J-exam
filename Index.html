@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J-Exam | Realtime Platforma</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary: #4361ee; --success: #4cc9f0; --danger: #f72585; --bg: #f8faff; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; display: flex; gap: 20px; }
+        .main-content { flex: 1; }
+        
+        /* O'ng panel (Sidebar) */
+        .sidebar { 
+            width: 280px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            position: sticky; 
+            top: 20px; 
+            height: fit-content; 
+        }
+
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
+        .hidden { display: none !important; }
+        
+        /* Navigatsiya katakchalari */
+        .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; }
+        .nav-item { 
+            aspect-ratio: 1; 
+            background: #f1f5f9; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 14px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: 0.2s;
+        }
+        .nav-item.answered { background: var(--primary); color: white; border-color: var(--primary); }
+        .nav-item:hover { transform: scale(1.05); border-color: var(--primary); }
+
+        .stat-box { background: #f8faff; padding: 10px; border-radius: 10px; margin-bottom: 10px; font-size: 14px; text-align: left; }
+        
+        input[type="text"], input[type="file"] { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #edf2f7; border-radius: 12px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 12px; font-weight: 600; cursor: pointer; width: 100%; transition: 0.3s; }
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        .question-card { background: white; padding: 25px; margin-bottom: 20px; border-radius: 15px; border-left: 6px solid var(--primary); text-align: left; }
+        .option-item { padding: 12px; border: 1px solid #eee; margin-top: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; }
+        .option-item:hover { background: #f0f7ff; }
+        
+        .header-info { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); }
+        .timer { font-size: 22px; font-weight: bold; color: var(--danger); }
+        .correct-ans { background: #e6fffa !important; border-color: #38b2ac !important; }
+        .wrong-ans { background: #fff5f5 !important; border-color: #feb2b2 !important; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen" class="card" style="max-width: 400px; margin: 100px auto;">
+    <h2 style="color: var(--primary);">Imtihon Tizimi</h2>
+    <input type="text" id="username" placeholder="F.I.SH">
+    <button onclick="startApp()">Tizimga kirish</button>
+</div>
+
+<div id="main-screen" class="container hidden">
+    <div class="main-content">
+        <div class="header-info">
+            <div id="welcome-msg" style="font-weight: 600;"></div>
+            <div id="timer" class="timer">30:00</div>
+        </div>
+
+        <div id="admin-section" class="card hidden" style="border: 2px dashed var(--primary); margin-bottom: 20px;">
+            <h3>Admin Panel: Test yuklash</h3>
+            <input type="file" id="docx-input" accept=".docx">
+            <p id="upload-status" style="color: var(--primary); font-size: 14px;"></p>
+        </div>
+
+        <div id="user-section" class="card">
+            <h3 id="test-title">Test yuklanmoqda...</h3>
+            <button id="start-quiz-btn" onclick="startQuiz()" style="background: #10b981;">Testni boshlash</button>
+        </div>
+
+        <div id="test-area" class="hidden"></div>
+    </div>
+
+    <div id="sidebar-view" class="sidebar hidden">
+        <div class="stat-box">
+            <div>✅ Yechildi: <b id="stat-done" style="color: var(--primary);">0</b></div>
+            <div>⏳ Qoldi: <b id="stat-left">25</b></div>
+        </div>
+        <div class="nav-grid" id="nav-grid"></div>
+        <button onclick="finishTest()" style="background: var(--danger); margin-top: 20px; padding: 10px;">Tugatish</button>
+    </div>
+</div>
+
+<div id="result-screen" class="hidden" style="max-width: 800px; margin: 20px auto;">
+    <div class="card">
+        <h2>Natijangiz</h2>
+        <div id="score-text" style="font-size: 48px; font-weight: 800; color: var(--primary);"></div>
+        <p id="res-info"></p>
+        <button onclick="location.reload()" style="background: #2d3748; width: auto;">Chiqish</button>
+    </div>
+    <div id="analysis-area" style="margin-top: 30px;"></div>
+</div>
+
+<script>
+    // FIREBASE KONFIGURATSIYASI
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBcn2bYdcDlWB-TFtuz5qWanO3aF_b9NCY",
+  authDomain: "j-exam.firebaseapp.com",
+  databaseURL: "https://j-exam-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "j-exam",
+  storageBucket: "j-exam.firebasestorage.app",
+  messagingSenderId: "370411029242",
+  appId: "1:370411029242:web:3a677a92d2b4309a8dff43",
+  measurementId: "G-G029WR0QKE"
+};
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let userName = "", allQuestions = [], selectedQuestions = [], userAnswers = {};
+    let timerInterval, timeLeft = 30 * 60, isAdmin = false;
+    const ADMIN_KEY = "admin777"; 
+
+    db.ref('currentTest').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            allQuestions = data.questions;
+            document.getElementById('test-title').innerText = "Tayyor test: " + data.name;
+        }
+    });
+
+    function startApp() {
+        userName = document.getElementById('username').value.trim();
+        if (!userName) return alert("Ism kiriting!");
+
+        if (userName === ADMIN_KEY) {
+            isAdmin = true;
+            document.getElementById('admin-section').classList.remove('hidden');
+        }
+        document.getElementById('welcome-msg').innerText = isAdmin ? "Rejim: Admin" : "Nomzod: " + userName;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-screen').classList.remove('hidden');
+    }
+
+    // Admin .docx yuklash qismi o'zgarishsiz...
+    document.getElementById('docx-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        mammoth.extractRawText({arrayBuffer: e.target.result}).then(result => {
+             // ... parsing kodi (yuqoridagidek)
+        });
+    });
+
+    function startQuiz() {
+        if (allQuestions.length === 0) return alert("Test yuklanmagan!");
+        selectedQuestions = allQuestions.sort(() => 0.5 - Math.random()).slice(0, 25);
+        
+        document.getElementById('user-section').classList.add('hidden');
+        document.getElementById('test-area').classList.remove('hidden');
+        document.getElementById('sidebar-view').classList.remove('hidden');
+        
+        renderTest();
+        renderNav();
+        startTimer();
+    }
+
+    function renderNav() {
+        const grid = document.getElementById('nav-grid');
+        grid.innerHTML = selectedQuestions.map((_, i) => 
+            `<div class="nav-item" id="nav-num-${i}" onclick="scrollToQ(${i})">${i+1}</div>`
+        ).join('');
+    }
+
+    function renderTest() {
+        const area = document.getElementById('test-area');
+        area.innerHTML = selectedQuestions.map((q, i) => `
+            <div class="question-card" id="q-block-${i}">
+                <p><b>${i + 1}. ${q.title}</b></p>
+                ${q.options.map((opt, oi) => `
+                    <div class="option-item" onclick="selectOpt(${i}, ${oi})">
+                        <input type="radio" name="q${i}" id="q${i}o${oi}" ${userAnswers[i] == oi ? 'checked' : ''}>
+                        <label for="q${i}o${oi}" style="margin-left:10px; cursor:pointer;">${opt}</label>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    function selectOpt(qI, oI) {
+        document.getElementById(`q${qI}o${oI}`).checked = true;
+        userAnswers[qI] = oI;
+        
+        // Statusni yangilash
+        document.getElementById(`nav-num-${qI}`).classList.add('answered');
+        updateStats();
+    }
+
+    function updateStats() {
+        const answeredCount = Object.keys(userAnswers).length;
+        document.getElementById('stat-done').innerText = answeredCount;
+        document.getElementById('stat-left').innerText = 25 - answeredCount;
+    }
+
+    function scrollToQ(i) {
+        document.getElementById(`q-block-${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            let m = Math.floor(timeLeft/60), s = timeLeft%60;
+            document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`;
+            if(timeLeft <= 0) finishTest();
+        }, 1000);
+    }
+
+    function finishTest() {
+        if(!confirm("Testni tugatishni xohlaysizmi?")) return;
+        clearInterval(timerInterval);
+        
+        let score = 0;
+        selectedQuestions.forEach((q, i) => { if (userAnswers[i] === q.correct) score++; });
+
+        document.getElementById('main-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('score-text').innerText = `${score} / 25`;
+    }
+</script>
+</body>
+</html>

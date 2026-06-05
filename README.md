@@ -1,0 +1,644 @@
+`<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mr_Murodjon | Ultimate Exam Pro</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #6366f1; --primary-hover: #4f46e5; --bg: #f3f4f6; 
+            --card: #ffffff; --text: #1f2937; --sub: #6b7280; 
+            --border: #e5e7eb; --danger: #ef4444; --success: #10b981;
+            --radius: 16px; --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
+        .hidden { display: none !important; }
+
+        /* Professional Header */
+        header { 
+            position: sticky; top: 0; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); 
+            z-index: 1000; padding: 15px 40px; display: flex; justify-content: space-between; 
+            align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        @media (max-width: 850px) {
+            .sticky-sidebar { 
+                position: static; 
+                margin-bottom: 20px; 
+            }
+        }
+        
+        .logo { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, var(--primary), #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Layout */
+        .wrapper { max-width: 1300px; margin: 30px auto; padding: 0 20px; }
+        .exam-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 340px; 
+            gap: 30px; 
+            align-items: start; /* Bu qator sidebarning "yopishib" qolishiga yordam beradi */
+        }
+
+        /* Card Style */
+        .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 25px; box-shadow: var(--shadow); transition: transform 0.2s; }
+        .q-card { margin-bottom: 25px; border-left: 5px solid transparent; transition: 0.3s; }
+        .q-card:hover { border-left-color: var(--primary); transform: translateX(5px); }
+
+        /* Options */
+        .option { 
+            display: flex; align-items: center; padding: 16px; margin: 12px 0; 
+            border: 2px solid var(--border); border-radius: 12px; cursor: pointer; 
+            transition: all 0.2s ease; font-weight: 500; position: relative;
+        }
+        .option:hover { border-color: var(--primary); background: #f9fafb; }
+        .option.selected { border-color: var(--primary); background: var(--primary-soft); background: rgba(99, 102, 241, 0.05); }
+        .option input { accent-color: var(--primary); margin-right: 15px; width: 18px; height: 18px; }
+
+        /* Sidebar Nav */
+        .sticky-sidebar { 
+            position: -webkit-sticky; /* Safari uchun */
+            position: sticky; 
+            top: 70px; /* Tepadan qoldiriladigan masofa */
+            align-self: start; /* Bu juda muhim: sidebar o'z balandligini saqlashi uchun */
+            height: max-content;
+        }
+        .nav-dots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 20px; }
+        .dot { 
+            height: 40px; display: flex; align-items: center; justify-content: center; 
+            background: #fff; border: 1px solid var(--border); border-radius: 10px; 
+            font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.2s;
+        }
+        .dot.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        /* Buttons */
+        .btn { 
+            padding: 12px 24px; border-radius: 12px; border: none; font-weight: 700; 
+            cursor: pointer; transition: 0.3s; font-family: inherit; font-size: 15px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; width: 100%; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4); }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); }
+
+        /* Status colors */
+        .correct { background: #ecfdf5 !important; border-color: var(--success) !important; color: #065f46; }
+        .wrong { background: #fef2f2 !important; border-color: var(--danger) !important; color: #991b1b; }
+
+        /* Admin Dashboard Table */
+        .pro-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .pro-table th { background: #f9fafb; padding: 15px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--sub); border-bottom: 2px solid var(--border); }
+        .pro-table td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+        .badge-5 { background: #dcfce7; color: #166534; }
+        .upload-container {
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        
+        .upload-container:hover, .upload-container.dragover {
+            border-color: var(--primary);
+            background: #f0f4ff;
+        }
+        
+        .upload-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-text {
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .upload-text strong {
+            display: block;
+            color: var(--primary);
+        }
+        
+        .upload-text span {
+            font-size: 12px;
+            color: var(--sub);
+        }
+        .option {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .option:active {
+            transform: scale(0.98);
+        }
+        .opt-text {
+            line-height: 1.4;
+        }
+        #scr-result {
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Mobil qurilmalar uchun maxsus moslashtirish (900px dan kichik ekranlar) */
+@media (max-width: 900px) {
+    header {
+        padding: 10px 15px;
+        flex-direction: column; /* Logotip va taymerni ustma-ust qo'yish */
+        gap: 10px;
+    }
+
+    .wrapper {
+        margin: 10px auto;
+        padding: 0 10px;
+    }
+
+    /* Savollar va sidebarni ustma-ust joylash */
+    .exam-grid {
+        display: flex;
+        flex-direction: column-reverse; /* Savollar xaritasini tepaga chiqarish */
+        gap: 15px;
+    }
+
+    .sticky-sidebar {
+        position: relative; /* Yopishib qolmasligi uchun */
+        top: 0;
+        width: 100%;
+    }
+
+    .sticky-sidebar .card {
+        padding: 15px;
+    }
+
+    /* Savollar xaritasini (dots) ixcham qilish */
+    .nav-dots {
+        display: flex;
+        overflow-x: auto; /* Yon tomonga o'tadigan qilish */
+        padding-bottom: 10px;
+        gap: 8px;
+        grid-template-columns: none; /* Gridni bekor qilish */
+    }
+
+    .dot {
+        min-width: 40px; /* Nuqtalar kichrayib ketmasligi uchun */
+        height: 40px;
+        flex-shrink: 0;
+    }
+
+    .q-card {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .option {
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    /* Admin paneldagi jadvalni mobil formatga keltirish */
+    .pro-table th, .pro-table td {
+        padding: 8px;
+        font-size: 12px;
+    }
+    
+    .card h2 {
+        font-size: 18px;
+    }
+}
+
+      
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">Mr_Murodjon Exam</div>
+    <div id="user-pill" class="hidden" style="display:flex; gap:15px; align-items:center;">
+        <div style="text-align: right">
+            <div id="p-name" style="font-weight: 800; font-size: 14px;"></div>
+            <div id="p-sub" style="font-size: 12px; color: var(--sub)"></div>
+        </div>
+        <div id="timer-box" style="background: var(--danger); color: white; padding: 8px 16px; border-radius: 12px; font-weight: 800; font-variant-numeric: tabular-nums;">30:00</div>
+    </div>
+</header>
+
+<div id="time-bar-container" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: rgba(0,0,0,0.05); z-index: 2000;">
+    <div id="time-bar-fill" style="width: 100%; height: 100%; background: #2563eb; transition: width 1s linear; box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);"></div>
+</div>
+
+<div class="wrapper">
+    <div id="scr-admin-login" class="hidden">
+        <div class="card" style="max-width: 400px; margin: 100px auto; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🔐</div>
+            <h2 style="margin-bottom: 20px;">Admin Kirish</h2>
+            <input type="password" id="admin-pass-input" placeholder="Parolni kiriting" 
+                   style="width:100%; padding:14px; border-radius:12px; border:2px solid var(--border); margin-bottom:20px; box-sizing:border-box; outline:none;">
+            <button class="btn btn-primary" onclick="checkAdminPassword()">Kirish</button>
+            <p id="admin-error" style="color: var(--danger); font-size: 13px; margin-top: 10px;" class="hidden">Xato parol! Qayta urinib ko'ring.</p>
+        </div>
+    </div>
+    <div id="scr-login" class="card" style="max-width: 480px; margin: 80px auto; text-align: center;">
+        <div style="font-size: 40px; margin-bottom: 10px;">🚀</div>
+        <h2 style="margin: 0 0 10px 0; font-weight: 800;">Xush kelibsiz</h2>
+        <p style="color: var(--sub); margin-bottom: 30px;">Davom etish uchun ma'lumotlaringizni kiriting.</p>
+        
+        <label style="display:block; text-align:left; font-size:13px; font-weight:700; margin-bottom:8px;">To'liq ismingiz</label>
+        <input type="text" id="user-fullname" placeholder="Ism Familiya..." style="width:100%; padding:14px; border-radius:12px; border:2px solid var(--border); margin-bottom:20px; box-sizing:border-box; outline:none;">
+        
+        <label style="display:block; text-align:left; font-size:13px; font-weight:700; margin-bottom:8px;">Fanni tanlang</label>
+        <select id="subject-list" style="width:100%; padding:14px; border-radius:12px; border:2px solid var(--border); margin-bottom:30px; outline:none;">
+            <option value="">Yuklanmoqda...</option>
+        </select>
+        
+        <button class="btn btn-primary" onclick="initQuiz()">Imtihonni boshlash</button>
+    </div>
+
+    <div id="scr-exam" class="hidden exam-grid">
+        <div id="questions-area"></div>
+        
+        <div class="sticky-sidebar">
+            <div class="card">
+                <h4 style="margin:0 0 15px 0">Savollar xaritasi</h4>
+                <div class="nav-dots" id="dot-container"></div>
+                <hr style="margin: 25px 0; border: 0; border-top: 1px solid var(--border);">
+                <button class="btn btn-primary" style="background: #1f2937;" onclick="completeQuiz()">🏁 Yakunlash</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scr-admin" class="hidden">
+        <div class="card" style="margin-bottom: 30px;">
+            <h2 style="margin-top:0">Boshqaruv Paneli</h2>
+            
+            <div class="card" style="margin-bottom: 25px; border-left: 5px solid var(--primary); background: #f8fafc;">
+                <h3 style="margin:0 0 10px 0; font-size: 16px;">Mavjud fanlar:</h3>
+                <div id="admin-subjects-stat" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <p style="color: var(--sub);">Yuklanmoqda...</p>
+                </div>
+            </div>
+    
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                
+                <div>
+                    <label style="display:block; font-size:14px; font-weight:700; margin-bottom:12px; color: var(--text);">
+                        1-qadam: Fayl orqali yuklash
+                    </label>
+                    <div class="upload-container" id="drop-zone">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">
+                            <strong>Word faylni tanlang</strong> yoki shu yerga tashlang
+                            <span>Faqat .docx formatidagi testlar</span>
+                        </div>
+                        <input type="file" id="word-upload" accept=".docx" hidden>
+                        <button class="btn" style="background: var(--primary); color: white; margin-top: 10px;" onclick="document.getElementById('word-upload').click()">Faylni tanlash</button>
+                    </div>
+                </div>
+    
+                <div>
+                    <div style="background: #eff6ff; padding: 15px; border-radius: 12px; border: 1px solid #dbeafe; font-size: 13px; margin-bottom: 20px;">
+                        <b style="color: #1e40af;">📌 Qo'llanma:</b><br>
+                        <code style="display:block; margin-top:5px; background:white; padding:5px; border-radius:4px;">Savol ==== #To'g'ri javob ==== Noto'g'ri ==== Noto'g'ri ++++</code>
+                    </div>
+    
+                    <label style="display:block; font-size:14px; font-weight:700; margin-bottom:12px; color: var(--text);">
+                        2-qadam: Tahrirlash va Fan nomi
+                    </label>
+                    <textarea id="raw-test-data" 
+                        placeholder="Testlar matni bu yerda ko'rinadi..." 
+                        style="width:100%; height:180px; border-radius:12px; border:1px solid var(--border); padding:15px; font-family: 'Courier New', monospace; font-size: 13px; outline: none; box-sizing: border-box; resize: vertical; margin-bottom: 15px;"></textarea>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="new-sub-name" placeholder="Fan nomi..." 
+                            style="flex: 1; padding:12px; border-radius:10px; border:1px solid var(--border); outline: none; font-weight: 600;">
+                        <button class="btn btn-primary" style="width: auto; padding: 0 25px;" onclick="saveTests()">Saqlash</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <div class="card">
+            <h3>Natijalar Monitoringi</h3>
+            <table class="pro-table">
+                <thead>
+                    <tr>
+                        <th>O'quvchi</th>
+                        <th>Fan</th>
+                        <th>Ball</th>
+                        <th>Baho</th>
+                        <th>Qurilma</th>
+                        <th>Sana</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-results"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="scr-result" class="hidden">
+        <div class="card" id="final-stats" style="text-align:center; max-width:600px; margin: 0 auto 30px auto;"></div>
+        <div id="review-area" style="max-width:800px; margin: 0 auto;"></div>
+    </div>
+</div>
+
+<script>
+    // FIREBASE CONFIG
+    const firebaseConfig = {
+        apiKey: "AIzaSyAIblTfaoQli7SpXbuRylPn5eflh6YQh-I",
+        authDomain: "murodjon-exam.firebaseapp.com",
+        databaseURL: "https://murodjon-exam-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "murodjon-exam",
+        storageBucket: "murodjon-exam.firebasestorage.app",
+        messagingSenderId: "993582955583",
+        appId: "1:993582955583:web:afe792ea9ee99577604c8a",
+        measurementId: "G-Z9G8ZE36XD"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let pool = {}, activeSet = [], chosen = {}, timer;
+
+    window.onload = () => {
+        if(window.location.hash === "#admin") {
+            show('scr-admin-login');
+        } else {
+            db.ref('test_collections').on('value', s => {
+                pool = s.val() || {};
+                const el = document.getElementById('subject-list');
+                el.innerHTML = '<option value="">Fanni tanlang</option>';
+                for(let k in pool) el.innerHTML += `<option value="${k}">${k}</option>`;
+            });
+        }
+    };
+
+    function checkAdminPassword() {
+        const pass = document.getElementById('admin-pass-input').value;
+        if(pass === "0044") { 
+            show('scr-admin');
+            loadAdminData();
+            updateAdminStats();
+        } else {
+            document.getElementById('admin-error').classList.remove('hidden');
+        }
+    }
+
+    function updateAdminStats() {
+        db.ref('test_collections').on('value', snap => {
+            const statsArea = document.getElementById('admin-subjects-stat');
+            const data = snap.val() || {};
+            statsArea.innerHTML = '';
+            for (let subject in data) {
+                const count = data[subject].length;
+                statsArea.innerHTML += `
+                    <div style="background: #fff; padding: 10px 15px; border-radius: 10px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: 700;">${subject}</span>
+                        <span style="background: var(--primary); color: white; padding: 2px 8px; border-radius: 20px; font-size: 12px;">${count} ta</span>
+                        <button onclick="deleteSubject('${subject}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">&times;</button>
+                    </div>`;
+            }
+        });
+    }
+
+    function deleteSubject(name) {
+        if(confirm(`${name} fanini o'chirmoqchimisiz?`)) db.ref('test_collections/' + name).remove();
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.altKey && e.key.toLowerCase() === 'a') {
+            window.location.hash = '#admin';
+            location.reload();
+        }
+    });
+
+    function show(id) {
+        document.querySelectorAll('.wrapper > div').forEach(d => d.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    function getDeviceInfo() {
+        const ua = navigator.userAgent;
+        let device = "PC", browser = "Brauzer";
+        if (/android/i.test(ua)) device = "Android";
+        else if (/iPhone|iPad/.test(ua)) device = "iOS";
+        if (/chrome|crios/i.test(ua)) browser = "Chrome";
+        else if (/firefox/i.test(ua)) browser = "Firefox";
+        else if (/safari/i.test(ua)) browser = "Safari";
+        return `${device} (${browser})`;
+    }
+
+    function initQuiz() {
+        const n = document.getElementById('user-fullname').value;
+        const s = document.getElementById('subject-list').value;
+        if(!n || !s) return alert("Ma'lumotlarni to'ldiring");
+
+        document.getElementById('p-name').innerText = n;
+        document.getElementById('p-sub').innerText = s;
+        document.getElementById('user-pill').classList.remove('hidden');
+        window.examStartTime = new Date();
+
+        activeSet = pool[s].sort(() => 0.5 - Math.random()).slice(0, 25).map(q => {
+            return {
+                ...q,
+                options: [...q.options].sort(() => Math.random() - 0.5) // Javoblarni tasodifiy aralashtirish
+            };
+        });
+        renderQuiz();
+        show('scr-exam');
+        
+        document.getElementById('time-bar-container').classList.remove('hidden');
+        let totalTime = 1800, timeLeft = totalTime;
+
+        timer = setInterval(() => {
+            timeLeft--;
+            let m = Math.floor(timeLeft / 60), sec = timeLeft % 60;
+            document.getElementById('timer-box').innerText = `${m}:${sec < 10 ? '0' + sec : sec}`;
+            document.getElementById('time-bar-fill').style.width = (timeLeft / totalTime) * 100 + '%';
+            if (timeLeft <= 0) { clearInterval(timer); completeQuiz(); }
+        }, 1000);
+    }
+
+    function renderQuiz() {
+        const area = document.getElementById('questions-area');
+        const dots = document.getElementById('dot-container');
+        area.innerHTML = ''; dots.innerHTML = '';
+    
+        activeSet.forEach((q, i) => {
+            let opts = '';
+            q.options.forEach((o, oi) => {
+                // Variantni JSON formatda xavfsiz uzatish (tirnoqlar bilan xato bermasligi uchun)
+                const safeOption = JSON.stringify(o).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                
+                opts += `
+                    <label class="option" onclick='pick(${i}, ${oi}, this, ${safeOption})'>
+                        <input type="radio" name="q${i}"> 
+                        <span class="opt-text">${o.text}</span>
+                    </label>`;
+            });
+    
+            area.innerHTML += `
+                <div class="card q-card" id="scroll-q-${i}">
+                    <span style="color:var(--primary); font-weight:800; font-size:12px;">SAVOL ${i+1}</span>
+                    <div class="q-title">${q.q}</div>
+                    <div class="options-container">
+                        ${opts}
+                    </div>
+                </div>`;
+            
+            dots.innerHTML += `<div class="dot" id="dot-${i}" onclick="document.getElementById('scroll-q-${i}').scrollIntoView({behavior:'smooth', block:'center'})">${i+1}</div>`;
+        });
+    }
+    
+    // Pick funksiyasi o'zgarishsiz qoladi, lekin u endi aralashgan ma'lumotni qabul qiladi
+    function pick(qi, oi, el, optionData) {
+        chosen[qi] = optionData; 
+        document.getElementById(`dot-${qi}`).classList.add('active');
+        el.parentElement.querySelectorAll('.option').forEach(l => l.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function pick(qi, oi, el, optionData) {
+        chosen[qi] = optionData; 
+        document.getElementById(`dot-${qi}`).classList.add('active');
+        el.parentElement.querySelectorAll('.option').forEach(l => l.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function completeQuiz() {
+        if(!confirm("Testni yakunlashni tasdiqlaysizmi?")) return;
+        
+        const endTime = new Date();
+        const startTime = window.examStartTime || new Date();
+        
+        clearInterval(timer);
+        let correct = 0;
+        const review = document.getElementById('review-area');
+        review.innerHTML = '<h2 style="text-align:center; margin-top:40px;">Xatolar tahlili</h2>';
+    
+        activeSet.forEach((q, i) => {
+            const selectedOpt = chosen[i];
+            const isRight = selectedOpt ? selectedOpt.correct : false;
+            if(isRight) correct++;
+            
+            let opts = '';
+            q.options.forEach((o) => {
+                let cls = o.correct ? 'correct' : (selectedOpt && selectedOpt.text === o.text ? 'wrong' : '');
+                opts += `<div class="option ${cls}">${o.text}</div>`;
+            });
+            review.innerHTML += `<div class="card q-card"><div class="q-title">${i+1}. ${q.q}</div>${opts}</div>`;
+        });
+    
+        const percent = Math.round((correct / activeSet.length) * 100);
+        let grade = 1;
+        if (correct >= 23) grade = 5;
+        else if (correct >= 20) grade = 4;
+        else if (correct >= 15) grade = 3;
+        else if (correct >= 10) grade = 2;
+        else grade = 1;
+    
+        const formatTime = (date) => date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
+    
+        // Natijani ko'rsatish
+        show('scr-result');
+        
+        // --- MANA SHU YERDA SAHIFA TEPAGA KO'TARILADI ---
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // ------------------------------------------------
+    
+        document.getElementById('final-stats').innerHTML = `
+            <div style="font-size:60px; margin-bottom:10px;">${grade >= 3 ? '🎉' : '😟'}</div>
+            <h2 style="margin:0; color:var(--primary);">${document.getElementById('user-fullname').value}</h2>
+            <p style="color:var(--sub); margin-bottom:20px;">Imtihon natijasi</p>
+            
+            <table style="width:100%; border-collapse: collapse; margin-bottom:20px; text-align:left;">
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:10px; color:var(--sub);">Boshlash vaqti:</td><td style="font-weight:700;">${formatTime(startTime)}</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:10px; color:var(--sub);">Tugatish vaqti:</td><td style="font-weight:700;">${formatTime(endTime)}</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:10px; color:var(--sub);">To'g'ri javoblar:</td><td style="font-weight:700;">${correct} ta</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><td style="padding:10px; color:var(--sub);">Ko'rsatkich:</td><td style="font-weight:700;">${percent}%</td></tr>
+                <tr><td style="padding:10px; color:var(--sub);">Baho:</td><td><span class="badge badge-${grade}" style="font-size:16px; padding:5px 15px;">${grade} - baho</span></td></tr>
+            </table>
+            
+            <button class="btn btn-primary" style="width:auto" onclick="location.reload()">Chiqish</button>
+        `;
+    
+        // Firebase-ga saqlash
+        db.ref('results').push({ 
+            name: document.getElementById('user-fullname').value, 
+            sub: document.getElementById('subject-list').value, 
+            startTime: formatTime(startTime),
+            endTime: formatTime(endTime),
+            correct: correct,
+            total: activeSet.length,
+            percent: percent + "%",
+            grade: grade, 
+            date: new Date().toLocaleDateString(),
+            device: getDeviceInfo()
+        });
+    }
+
+    // Admin: Fayl yuklash va saqlash
+    document.getElementById('word-upload').addEventListener('change', e => processWordFile(e.target.files[0]));
+    
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.onclick = e => { if (e.target.tagName !== 'BUTTON') document.getElementById('word-upload').click(); };
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+    dropZone.ondrop = e => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        processWordFile(e.dataTransfer.files[0]);
+    };
+
+    function processWordFile(file) {
+        if (!file || !file.name.endsWith('.docx')) return alert("Faqat .docx yuklang!");
+        const reader = new FileReader();
+        reader.onload = e => {
+            mammoth.extractRawText({ arrayBuffer: e.target.result }).then(res => {
+                document.getElementById('raw-test-data').value = res.value;
+                alert("✅ Yuklandi!");
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function saveTests() {
+        const s = document.getElementById('new-sub-name').value;
+        const t = document.getElementById('raw-test-data').value;
+        if(!s || !t) return alert("Fan nomi va testlarni kiriting!");
+        const blocks = t.split('++++').filter(b => b.trim());
+        const data = blocks.map(b => {
+            const p = b.split('====').map(x => x.trim());
+            return { q: p[0], options: p.slice(1).map(o => ({ text: o.replace('#',''), correct: o.startsWith('#') })) };
+        });
+        db.ref('test_collections/' + s).set(data).then(() => { alert("Saqlandi!"); location.reload(); });
+    }
+
+    function loadAdminData() {
+        db.ref('results').on('value', snap => {
+            const b = document.getElementById('admin-results'); 
+            b.innerHTML = '';
+            snap.forEach(c => {
+                const r = c.val();
+                b.innerHTML = `<tr>
+                    <td><b>${r.name}</b></td>
+                    <td>${r.sub}</td>
+                    <td>${r.correct}/25</td>
+                    <td><span class="badge badge-${r.grade}">${r.grade} baho</span></td>
+                    <td style="font-size: 11px;">${r.device || 'Eski'}</td>
+                    <td>${r.date}</td>
+                </tr>` + b.innerHTML;
+            });
+        });
+    }
+</script>
+</body>
+</html>
